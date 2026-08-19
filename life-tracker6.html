@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Life">
+<title>ToDo・買い物・筋トレ</title>
+<style>
+  :root{
+    --paper:#f6f4ee;
+    --ink:#2b2a26;
+    --sub:#8a867a;
+    --line:#e2ded2;
+    --card:#ffffff;
+    --todo:#3f6b52;
+    --shop:#b2622e;
+    --gym:#3a4f8a;
+    --weight:#6b4a7a;
+    --money:#8a6d3b;
+    --danger:#b3453f;
+    --radius:14px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior:none;
+  }
+  body{
+    display:flex; flex-direction:column;
+    height:100vh; height:100dvh;
+  }
+  header{
+    padding: calc(var(--safe-top) + 14px) 52px 12px 20px;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    flex-shrink:0;
+    position:relative;
+  }
+  .settings-btn{
+    position:absolute;
+    right:16px; top: calc(var(--safe-top) + 14px);
+    background:none; border:none; font-size:20px;
+    color:var(--sub); padding:4px; line-height:1;
+  }
+  .settings-overlay{
+    display:none; position:fixed; inset:0;
+    background:rgba(20,18,14,0.45);
+    z-index:100;
+    align-items:flex-start; justify-content:center;
+  }
+  .settings-overlay.open{ display:flex; }
+  .settings-panel{
+    background:var(--paper);
+    margin: calc(var(--safe-top) + 60px) 16px 0;
+    border-radius:16px;
+    padding:20px;
+    max-height:70vh; overflow-y:auto;
+    width:100%; max-width:420px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.25);
+  }
+  .settings-panel h2{ margin:0 0 6px; font-size:16px; }
+  .settings-panel p{ font-size:12.5px; color:var(--sub); line-height:1.7; margin:0 0 16px; }
+  .settings-btn-full{
+    display:block; width:100%; box-sizing:border-box;
+    text-align:center; padding:13px; border-radius:12px;
+    font-size:14.5px; font-weight:700; margin-bottom:10px;
+    border:none; cursor:pointer;
+  }
+  #settingsStatus{ font-size:12px; margin-top:10px; min-height:16px; }
+
+  .sheet-overlay{
+    display:none; position:fixed; inset:0;
+    background:rgba(20,18,14,0.45);
+    z-index:110;
+    align-items:flex-end; justify-content:center;
+  }
+  .sheet-overlay.open{ display:flex; }
+  .sheet-panel{
+    background:var(--paper);
+    width:100%; max-width:480px;
+    border-radius:20px 20px 0 0;
+    padding:14px 18px calc(18px + var(--safe-bottom));
+    box-shadow:0 -8px 30px rgba(0,0,0,0.25);
+    animation: sheetUp .2s ease;
+  }
+  @keyframes sheetUp{ from{ transform:translateY(24px); opacity:0; } to{ transform:none; opacity:1; } }
+  .sheet-handle{
+    width:36px; height:4px; border-radius:2px;
+    background:var(--line); margin:0 auto 14px;
+  }
+  .sheet-panel h2{ margin:0 0 2px; font-size:15px; }
+  .sheet-panel .sheet-task{ font-size:13px; color:var(--sub); margin-bottom:12px; line-height:1.5; }
+  .sheet-panel textarea{
+    width:100%; min-height:100px; box-sizing:border-box;
+    border:1px solid var(--line); border-radius:12px; padding:12px;
+    font-size:16px; font-family:inherit; color:var(--ink); background:var(--card);
+    resize:vertical;
+  }
+  .sheet-actions{ display:flex; gap:8px; margin-top:12px; }
+  .sheet-actions .btn{ flex:1; padding:12px; border-radius:12px; font-weight:700; }
+
+  .item-memo{
+    font-size:12px; color:var(--sub); margin-top:4px;
+    line-height:1.4; word-break:break-word;
+  }
+  .item-text[data-id]{
+    -webkit-touch-callout:none; -webkit-user-select:none; user-select:none;
+    touch-action:manipulation;
+  }
+  header h1{
+    margin:0; font-size:20px; font-weight:800; letter-spacing:.02em;
+  }
+  header .date{
+    margin-top:2px; font-size:12px; color:var(--sub);
+  }
+  main{
+    flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    padding: 16px 16px calc(90px + var(--safe-bottom));
+  }
+  .page{ display:none; }
+  .page.active{ display:block; animation:fade .18s ease; }
+  @keyframes fade{ from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none} }
+
+  .add-row{
+    display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;
+  }
+  .add-row input, .add-row select{
+    flex:1; min-width:0;
+    padding:12px 14px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:var(--card);
+    font-size:16px;
+    color:var(--ink);
+  }
+  .add-row input[type=date]{
+    flex:0 0 auto; width:132px; color:var(--sub); font-size:14px; padding:12px 10px;
+  }
+  .add-row .btn.add{ flex:0 0 auto; }
+  .add-hint{
+    font-size:11px; color:var(--sub); margin: -2px 2px 14px;
+  }
+  .due-input{
+    display:flex; align-items:center; gap:4px;
+    flex:0 0 auto;
+  }
+  .due-input input{
+    width:38px; padding:12px 2px;
+    text-align:center; font-size:15px;
+    border:1px solid var(--line); border-radius:10px;
+    background:var(--card); color:var(--ink);
+    -moz-appearance:textfield;
+  }
+  .due-input input::-webkit-outer-spin-button,
+  .due-input input::-webkit-inner-spin-button{
+    -webkit-appearance:none; margin:0;
+  }
+  .due-input span{ color:var(--sub); font-size:13px; }
+  .due-input .due-unit{ font-size:11px; color:var(--sub); margin-left:2px; }
+  .add-row input:focus, .add-row select:focus{ outline:2px solid currentColor; outline-offset:1px; }
+  .btn{
+    border:none; border-radius:var(--radius);
+    padding:12px 16px;
+    font-size:15px; font-weight:700;
+    color:#fff;
+    cursor:pointer;
+  }
+  .btn:active{ transform:scale(0.96); }
+  .todo-accent .btn, .todo-accent input:focus{ color:var(--todo); }
+  #todoPage .btn.add{ background:var(--todo); color:#fff; }
+  #shopPage .btn.add{ background:var(--shop); color:#fff; }
+  #gymPage .btn.add{ background:var(--gym); color:#fff; }
+  #weightPage .btn.add{ background:var(--weight); color:#fff; }
+  #moneyPage .btn.add{ background:var(--money); color:#fff; }
+
+  .empty{
+    text-align:center; color:var(--sub); font-size:13px;
+    padding:40px 20px; line-height:1.7;
+  }
+
+  .item{
+    display:flex; align-items:center; gap:12px;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:12px 14px;
+    margin-bottom:8px;
+    -webkit-touch-callout:none; touch-action:manipulation;
+  }
+  .check{
+    width:24px; height:24px; flex-shrink:0;
+    border-radius:50%;
+    border:2px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    background:#fff;
+  }
+  .check.checked{ color:#fff; font-size:14px; }
+  #todoPage .check.checked{ background:var(--todo); border-color:var(--todo); }
+  #shopPage .check.checked{ background:var(--shop); border-color:var(--shop); }
+
+  .item-text{ flex:1; min-width:0; font-size:15.5px; line-height:1.4; word-break:break-word; }
+  .item-text.done{ color:var(--sub); text-decoration:line-through; }
+  .item-qty{ font-size:12.5px; color:var(--sub); margin-top:2px; }
+  .item-due{ font-size:12px; color:var(--sub); margin-top:3px; }
+  .item-due.overdue{ color:var(--danger); font-weight:700; }
+  .item-due.soon{ color:var(--danger); font-weight:600; }
+  .star-btn{
+    flex-shrink:0; width:26px; height:26px; border:none; background:none;
+    font-size:19px; color:#d8d4c6; padding:0; line-height:1;
+  }
+  .star-btn.active{ color:#e0a52c; }
+  .memo-btn{
+    flex-shrink:0; width:26px; height:26px; border:none; background:none;
+    font-size:15px; color:#d8d4c6; padding:0; line-height:1;
+    opacity:0.65;
+  }
+  .memo-btn.active{ color:var(--todo); opacity:1; }
+  .item-memo{
+    display:flex; align-items:flex-start; gap:5px;
+    font-size:12px; color:var(--sub); margin-top:5px;
+    line-height:1.5; word-break:break-word;
+    background:#f1eee4; border-radius:8px; padding:5px 8px;
+  }
+  .item-memo .mp-ico{ flex-shrink:0; font-size:11px; margin-top:1px; }
+  .item.pressing{ background:#efece0; }
+  .del{
+    flex-shrink:0; width:30px; height:30px;
+    border:none; background:none; color:var(--sub);
+    font-size:18px; cursor:pointer;
+  }
+  .del:active{ color:var(--danger); }
+
+  .section-title{
+    font-size:12px; font-weight:700; color:var(--sub);
+    letter-spacing:.06em; margin: 18px 2px 8px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .clear-link{ font-size:12px; color:var(--danger); background:none; border:none; padding:4px; }
+
+  .seg{
+    display:flex; background:var(--card);
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:3px; margin-bottom:14px;
+  }
+  .seg-btn{
+    flex:1; border:none; background:none;
+    padding:9px 0; border-radius:11px;
+    font-size:13px; font-weight:700; color:var(--sub);
+  }
+  .seg-btn.active{ background:var(--todo); color:#fff; }
+  #shopPage .seg-btn.active{ background:var(--shop); }
+  #gymPage .seg-btn.active{ background:var(--gym); }
+  #moneyPage .seg-btn.active{ background:var(--money); }
+
+  .hist-day{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px; margin-bottom:10px;
+  }
+  .hist-day .hd-top{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:8px; gap:8px; cursor:pointer;
+  }
+  .hist-day .hd-date{ font-weight:700; font-size:14px; }
+  .hist-day .hd-caret{ font-size:10px; color:var(--sub); margin-left:4px; }
+  .hist-load-more{
+    display:block; width:100%; box-sizing:border-box;
+    background:var(--card); color:var(--todo); border:1px solid var(--line);
+    border-radius:var(--radius); padding:12px; font-size:13px; font-weight:700;
+    margin-bottom:10px;
+  }
+  .month-summary{
+    background:#f1eee4; border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px; margin-bottom:14px;
+  }
+  .month-summary .ms-top{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:8px;
+  }
+  .month-summary .ms-title{ font-weight:700; font-size:13.5px; }
+  .month-summary .ms-count{ font-size:12px; color:var(--sub); }
+  .month-summary .hist-item{ padding:3px 0; }
+  .archive-row{
+    display:flex; gap:6px; overflow-x:auto;
+    padding-bottom:10px; margin-bottom:10px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .archive-pill{
+    flex:0 0 auto; white-space:nowrap;
+    padding:7px 13px; border-radius:20px;
+    border:1px solid var(--line); background:var(--card);
+    color:var(--sub); font-size:12.5px; font-weight:600;
+  }
+  .archive-pill.active{ background:var(--todo); color:#fff; border-color:var(--todo); }
+  #shopPage .archive-pill.active{ background:var(--shop); border-color:var(--shop); }
+  .hist-day .hd-rate{ font-size:12px; color:var(--sub); flex-shrink:0; }
+  .hist-bar{
+    height:6px; border-radius:3px; background:var(--line);
+    overflow:hidden; margin-bottom:10px;
+  }
+  .hist-bar-fill{ height:100%; background:var(--todo); }
+  .hist-item{
+    display:flex; align-items:center; gap:8px;
+    font-size:13.5px; padding:4px 0;
+  }
+  .hist-item .dot{
+    width:16px; height:16px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px; color:#fff; background:var(--line);
+  }
+  .hist-item .dot.done{ background:var(--todo); }
+  .hist-item .txt.done{ color:var(--sub); text-decoration:line-through; }
+
+  .gym-card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px; margin-bottom:10px;
+  }
+  .gym-card .top{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .gym-card .ex{ font-weight:700; font-size:15.5px; }
+  .gym-card .meta{ font-size:13px; color:var(--sub); margin-top:4px; }
+  .gym-card .date{ font-size:11.5px; color:var(--sub); }
+  .gym-day-label{
+    font-size:12px; color:var(--gym); font-weight:700; margin: 16px 2px 8px;
+  }
+
+  .gym-form{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px; margin-bottom:16px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .gym-form .row{ display:flex; gap:8px; }
+  .gym-form input, .gym-form select{
+    padding:12px 12px; border:1px solid var(--line); border-radius:10px;
+    font-size:16px; background:#fbfaf7; min-width:0;
+  }
+  .gym-form select{ color:var(--ink); }
+  .gym-form input.exname{ flex:1; }
+  .gym-form input.num{ width:0; flex:1; text-align:center; }
+  .gym-form .hint{ font-size:11px; color:var(--sub); margin-top:-2px; }
+
+  .kcal{ font-size:12px; color:var(--gym); font-weight:700; margin-top:3px; }
+  .badge{
+    display:inline-block; font-size:11px; font-weight:700;
+    padding:2px 8px; border-radius:20px; color:#fff; margin-left:6px;
+  }
+
+  .score-summary{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px; margin-bottom:16px;
+  }
+  .score-summary .ss-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:6px 0;
+  }
+  .score-summary .ss-label{ font-size:13px; color:var(--sub); }
+  .score-summary .ss-val{ font-size:15px; font-weight:800; }
+
+  .bars{
+    display:flex; align-items:flex-end; gap:6px;
+    height:120px; padding:0 2px;
+  }
+  .bars .bar-col{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+    height:100%; min-width:0;
+  }
+  .bars .bar{
+    width:100%; max-width:22px; border-radius:5px 5px 2px 2px;
+    background:var(--gym);
+  }
+  .bars .bar-label{
+    font-size:9.5px; color:var(--sub); margin-top:4px;
+    white-space:nowrap;
+  }
+  #moneyPage .bars .bar{ background:var(--money); }
+
+  .money-day-label{
+    font-size:12px; color:var(--money); font-weight:700; margin: 16px 2px 8px;
+  }
+  #moneyTypeExpense.active{ background:var(--danger); color:#fff; border-color:var(--danger); }
+  #moneyTypeIncome.active{ background:var(--todo); color:#fff; border-color:var(--todo); }
+  .cat-row{ margin-bottom:12px; }
+  .cat-row .cat-top{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:13px; margin-bottom:5px;
+  }
+  .cat-row .cat-name{ font-weight:700; }
+  .cat-row .cat-amt{ color:var(--sub); font-size:12px; }
+  .cat-row .cat-bar-bg{ height:8px; background:var(--line); border-radius:4px; overflow:hidden; }
+  .cat-row .cat-bar-fill{ height:100%; background:var(--money); }
+
+  .weight-card{
+    display:flex; justify-content:space-between; align-items:center;
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:12px 14px; margin-bottom:8px;
+  }
+  .weight-card .wdate{ font-size:12px; color:var(--sub); }
+  .weight-card .wval{ font-size:17px; font-weight:800; color:var(--weight); margin-top:2px; }
+
+  .chart-wrap{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px 12px 8px; margin-bottom:16px;
+  }
+  .chart-title{ font-size:12px; color:var(--sub); font-weight:700; margin-bottom:6px; }
+  .chart-empty{ text-align:center; color:var(--sub); font-size:12.5px; padding:30px 0; }
+
+  nav{
+    position:fixed; left:0; right:0; bottom:0;
+    display:flex;
+    background:rgba(246,244,238,0.92);
+    backdrop-filter: blur(10px);
+    border-top:1px solid var(--line);
+    padding-bottom: var(--safe-bottom);
+  }
+  nav button{
+    flex:1; border:none; background:none;
+    padding:9px 0 8px;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    color:var(--sub); font-size:9.5px; font-weight:600;
+  }
+  nav button .ico{ font-size:17px; line-height:1; }
+  nav button.active{ color:var(--ink); }
+  nav button.active.n-todo{ color:var(--todo); }
+  nav button.active.n-shop{ color:var(--shop); }
+  nav button.active.n-gym{ color:var(--gym); }
+  nav button.active.n-weight{ color:var(--weight); }
+  nav button.active.n-money{ color:var(--money); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="pageTitle">ToDo</h1>
+  <div class="date" id="pageSub"></div>
+  <button class="settings-btn" onclick="toggleSettings()" aria-label="設定">⚙️</button>
+</header>
+
+<div class="settings-overlay" id="settingsOverlay" onclick="if(event.target===this) toggleSettings()">
+  <div class="settings-panel">
+    <h2>データのバックアップ</h2>
+    <p>ToDo・買い物・筋トレ・体重の全データを1つのファイルに書き出せます。iCloud Driveやファイルアプリに保存しておくと、ブラウザ側のデータが万一消えても復元できます。</p>
+    <button class="settings-btn-full" style="background:var(--ink); color:#fff;" onclick="exportData()">📤 ファイルに書き出す</button>
+    <label class="settings-btn-full" style="background:var(--card); color:var(--ink); border:1px solid var(--line);">
+      📥 ファイルから復元する
+      <input type="file" accept="application/json" style="display:none;" onchange="importData(event)">
+    </label>
+    <div id="settingsStatus"></div>
+    <button class="settings-btn-full" style="background:none; color:var(--sub); margin-top:6px;" onclick="toggleSettings()">閉じる</button>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="memoOverlay" onclick="if(event.target===this) closeMemoEditor()">
+  <div class="sheet-panel">
+    <div class="sheet-handle"></div>
+    <h2>メモ</h2>
+    <div class="sheet-task" id="memoTaskLabel"></div>
+    <textarea id="memoTextarea" maxlength="500" placeholder="メモを入力（詳細、持ち物、理由など）"></textarea>
+    <div class="sheet-actions">
+      <button class="btn" style="background:var(--card); color:var(--danger); border:1px solid var(--line);" onclick="deleteMemo()">削除</button>
+      <button class="btn" style="background:var(--todo); color:#fff;" onclick="saveMemo()">保存</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <!-- ToDo -->
+  <section class="page active" id="todoPage">
+    <div class="seg">
+      <button id="todoSegList" class="seg-btn active" onclick="setTodoView('list')">今日のリスト</button>
+      <button id="todoSegHistory" class="seg-btn" onclick="setTodoView('history')">日付ごと</button>
+    </div>
+
+    <div id="todoListView">
+      <div class="add-row">
+        <input type="text" id="todoInput" placeholder="やることを入力" maxlength="80">
+        <div class="due-input">
+          <input type="number" id="todoDueM" placeholder="月" min="1" max="12" inputmode="numeric">
+          <span>/</span>
+          <input type="number" id="todoDueD" placeholder="日" min="1" max="31" inputmode="numeric">
+        </div>
+        <button class="btn add" onclick="addTodo()">追加</button>
+      </div>
+      <div class="add-hint">締切（月/日）は任意です・タスクを長押しするとメモを追加できます</div>
+      <div id="todoActiveList"></div>
+      <div id="todoDoneWrap">
+        <div class="section-title">完了 <button class="clear-link" onclick="clearDoneTodos()">削除</button></div>
+        <div id="todoDoneList"></div>
+      </div>
+    </div>
+
+    <div id="todoHistoryView" style="display:none;">
+      <div class="archive-row" id="todoHistoryArchive"></div>
+      <div id="todoHistoryList"></div>
+    </div>
+  </section>
+
+  <!-- Shopping -->
+  <section class="page" id="shopPage">
+    <div class="seg">
+      <button id="shopSegList" class="seg-btn active" onclick="setShopView('list')">買い物リスト</button>
+      <button id="shopSegHistory" class="seg-btn" onclick="setShopView('history')">日付ごと</button>
+    </div>
+
+    <div id="shopListView">
+      <div class="add-row">
+        <input type="text" id="shopInput" placeholder="買うものを入力" maxlength="80">
+        <div class="due-input">
+          <input type="number" id="shopDueM" placeholder="月" min="1" max="12" inputmode="numeric">
+          <span>/</span>
+          <input type="number" id="shopDueD" placeholder="日" min="1" max="31" inputmode="numeric">
+        </div>
+        <button class="btn add" onclick="addShop()">追加</button>
+      </div>
+      <div class="add-hint">期限（月/日）は任意です</div>
+      <div id="shopActiveList"></div>
+      <div id="shopDoneWrap">
+        <div class="section-title">購入済み <button class="clear-link" onclick="clearDoneShop()">削除</button></div>
+        <div id="shopDoneList"></div>
+      </div>
+    </div>
+
+    <div id="shopHistoryView" style="display:none;">
+      <div class="archive-row" id="shopHistoryArchive"></div>
+      <div id="shopHistoryList"></div>
+    </div>
+  </section>
+
+  <!-- Gym -->
+  <section class="page" id="gymPage">
+    <div class="seg">
+      <button id="gymSegList" class="seg-btn active" onclick="setGymView('list')">記録</button>
+      <button id="gymSegScore" class="seg-btn" onclick="setGymView('score')">強度スコア</button>
+    </div>
+
+    <div id="gymListView">
+      <div class="gym-form">
+        <input type="text" class="exname" id="gymEx" placeholder="種目名（未入力なら種類名を使用）" maxlength="40">
+        <div class="row">
+          <select id="gymType"></select>
+        </div>
+        <div class="row">
+          <input type="number" inputmode="decimal" class="num" id="gymWeight" placeholder="重量kg">
+          <input type="number" inputmode="numeric" class="num" id="gymReps" placeholder="回数">
+          <input type="number" inputmode="numeric" class="num" id="gymSets" placeholder="セット">
+        </div>
+        <div class="row">
+          <input type="number" inputmode="numeric" class="num" id="gymDuration" placeholder="時間（分）">
+          <input type="number" inputmode="decimal" class="num" id="gymDistance" placeholder="距離km" step="0.1">
+        </div>
+        <div class="hint">時間を入力すると消費カロリー・強度スコアが自動計算されます（今日の体重記録→なければ直近の記録→それも無ければ65kgを仮の値として使用）。距離はランニングなどの記録用（任意）</div>
+        <button class="btn add" onclick="addGym()">記録を追加</button>
+      </div>
+      <div id="gymList"></div>
+    </div>
+
+    <div id="gymScoreView" style="display:none;">
+      <div class="score-summary" id="gymScoreSummary"></div>
+      <div class="chart-wrap">
+        <div class="chart-title">日別 消費カロリー（直近14日）</div>
+        <div id="gymBarChart"></div>
+      </div>
+      <div id="gymScoreList"></div>
+    </div>
+  </section>
+
+  <!-- Weight -->
+  <section class="page" id="weightPage">
+    <div class="gym-form">
+      <div class="row">
+        <input type="date" id="weightDate" style="flex:1">
+        <input type="number" inputmode="decimal" class="num" id="weightVal" placeholder="体重kg" step="0.1">
+      </div>
+      <button class="btn add" onclick="addWeight()">記録を追加</button>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">推移（直近30件）</div>
+      <div id="weightChart"></div>
+    </div>
+    <div id="weightList"></div>
+  </section>
+
+  <!-- Money -->
+  <section class="page" id="moneyPage">
+    <div class="seg">
+      <button id="moneySegList" class="seg-btn active" onclick="setMoneyView('list')">記録</button>
+      <button id="moneySegSummary" class="seg-btn" onclick="setMoneyView('summary')">集計</button>
+    </div>
+
+    <div id="moneyListView">
+      <div class="gym-form">
+        <div class="seg" style="margin-bottom:2px;">
+          <button type="button" id="moneyTypeExpense" class="seg-btn active" onclick="setMoneyType('expense')">支出</button>
+          <button type="button" id="moneyTypeIncome" class="seg-btn" onclick="setMoneyType('income')">収入</button>
+        </div>
+        <div class="row">
+          <input type="number" inputmode="numeric" class="num" id="moneyAmount" placeholder="金額" style="flex:1.4;">
+          <select id="moneyCategory" style="flex:1;"></select>
+        </div>
+        <div class="row">
+          <input type="text" id="moneyMemo" placeholder="メモ（任意）" maxlength="40" style="flex:1;">
+          <div class="due-input">
+            <input type="number" id="moneyDateM" placeholder="月" min="1" max="12" inputmode="numeric">
+            <span>/</span>
+            <input type="number" id="moneyDateD" placeholder="日" min="1" max="31" inputmode="numeric">
+          </div>
+        </div>
+        <div class="hint">日付は空欄なら今日として記録（月/日のみ入力。今日より先の日付は自動で去年扱いになります）</div>
+        <button class="btn add" onclick="addMoney()">記録を追加</button>
+      </div>
+      <div id="moneyList"></div>
+    </div>
+
+    <div id="moneySummaryView" style="display:none;">
+      <div class="archive-row" id="moneyArchive"></div>
+      <div class="score-summary" id="moneySummaryCard"></div>
+      <div class="chart-wrap">
+        <div class="chart-title" id="moneyCategoryTitle">カテゴリ別内訳（支出）</div>
+        <div id="moneyCategoryBars"></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">月別 支出推移（直近6ヶ月）</div>
+        <div id="moneyBarChart"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button class="active n-todo" onclick="switchPage('todo')">
+    <span class="ico">✓</span>ToDo
+  </button>
+  <button class="n-shop" onclick="switchPage('shop')">
+    <span class="ico">🛒</span>買い物
+  </button>
+  <button class="n-gym" onclick="switchPage('gym')">
+    <span class="ico">💪</span>筋トレ
+  </button>
+  <button class="n-weight" onclick="switchPage('weight')">
+    <span class="ico">⚖️</span>体重
+  </button>
+  <button class="n-money" onclick="switchPage('money')">
+    <span class="ico">💰</span>家計簿
+  </button>
+</nav>
+
+<script>
+  const STORE = {
+    todo: 'lt_todo_items',
+    shop: 'lt_shop_items',
+    gym:  'lt_gym_logs',
+    weight: 'lt_weight_logs',
+    money: 'lt_money_records'
+  };
+
+  // メモリキャッシュ：同じキーを何度もlocalStorageから読み直さないようにして高速化する。
+  // save()するたびにキャッシュも同時に更新するので、キャッシュとlocalStorageは常に一致する。
+  const _memCache = {};
+  function load(key){
+    if(key in _memCache) return _memCache[key];
+    let data;
+    try { data = JSON.parse(localStorage.getItem(key)) || []; }
+    catch(e){ data = []; }
+    _memCache[key] = data;
+    return data;
+  }
+  function save(key, data){
+    _memCache[key] = data;
+    localStorage.setItem(key, JSON.stringify(data));
+  }
+  function uid(){
+    return Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+  function esc(s){
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  const titles = {
+    todo: ['ToDo', 'やることリスト'],
+    shop: ['買い物リスト', '買うものリスト'],
+    gym:  ['筋トレ記録', 'トレーニングログ'],
+    weight: ['体重記録', '体重の推移'],
+    money: ['家計簿', '収支の記録']
+  };
+
+  function switchPage(name){
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(name + 'Page').classList.add('active');
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.querySelector('.n-' + name).classList.add('active');
+    document.getElementById('pageTitle').textContent = titles[name][0];
+    let sub = titles[name][1];
+    if(name === 'todo' || name === 'shop'){
+      const t = todayStr();
+      sub = `${fmtDateShort(t)}（${weekdayLabel(t)}）・${sub}`;
+    }
+    document.getElementById('pageSub').textContent = sub;
+  }
+
+  /* ---------- ToDo ---------- */
+  function buildDueDate(mEl, dEl){
+    const m = parseInt(mEl.value, 10);
+    const d = parseInt(dEl.value, 10);
+    if(!m || !d || m < 1 || m > 12 || d < 1 || d > 31) return null;
+    const today = new Date(); today.setHours(0,0,0,0);
+    let year = today.getFullYear();
+    let candidate = new Date(year, m - 1, d);
+    candidate.setHours(0,0,0,0);
+    if(candidate < today){ year += 1; }
+    const pad = n => String(n).padStart(2,'0');
+    return `${year}-${pad(m)}-${pad(d)}`;
+  }
+  function addTodo(){
+    const input = document.getElementById('todoInput');
+    const mEl = document.getElementById('todoDueM');
+    const dEl = document.getElementById('todoDueD');
+    const text = input.value.trim();
+    if(!text) return;
+    const due = buildDueDate(mEl, dEl);
+    const items = load(STORE.todo);
+    items.unshift({ id: uid(), text, done:false, star:false, memo:'', date: todayStr(), due });
+    save(STORE.todo, items);
+    input.value = '';
+    mEl.value = '';
+    dEl.value = '';
+    renderTodo();
+  }
+  function toggleTodo(id){
+    const items = load(STORE.todo);
+    const it = items.find(i => i.id === id);
+    if(it){ it.done = !it.done; save(STORE.todo, items); renderTodo(); }
+  }
+  function toggleStar(id){
+    const items = load(STORE.todo);
+    const it = items.find(i => i.id === id);
+    if(it){ it.star = !it.star; save(STORE.todo, items); renderTodo(); }
+  }
+  function deleteTodo(id){
+    save(STORE.todo, load(STORE.todo).filter(i => i.id !== id));
+    renderTodo();
+  }
+  function clearDoneTodos(){
+    save(STORE.todo, load(STORE.todo).filter(i => !(i.done && isThisWeek(i.date))));
+    renderTodo();
+  }
+  function dueDisplay(dueStr, done){
+    if(!dueStr) return '';
+    const today = todayStr();
+    const overdue = !done && dueStr < today;
+    const diffDays = Math.round((new Date(dueStr + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
+    const soon = !done && !overdue && diffDays <= 2;
+    let cls = '', label = `締切 ${fmtDateShort(dueStr)}（${weekdayLabel(dueStr)}）`;
+    if(overdue){
+      cls = 'overdue';
+      label = `期限切れ：${fmtDateShort(dueStr)}（${weekdayLabel(dueStr)}）`;
+    } else if(soon){
+      cls = 'soon';
+      label = diffDays === 0 ? '今日締切' : diffDays === 1 ? '明日締切' : `あと${diffDays}日：${fmtDateShort(dueStr)}`;
+    }
+    return `<div class="item-due ${cls}">${label}</div>`;
+  }
+
+  function memoPreview(memo){
+    if(!memo) return '';
+    const short = memo.length > 50 ? memo.slice(0,50) + '…' : memo;
+    return `<div class="item-memo"><span class="mp-ico">📝</span><span>${esc(short)}</span></div>`;
+  }
+
+  function renderTodo(){
+    const items = load(STORE.todo);
+    const active = items.filter(i => !i.done).sort((a,b) => (b.star?1:0) - (a.star?1:0));
+    const done = items.filter(i => i.done && isThisWeek(i.date));
+    const activeEl = document.getElementById('todoActiveList');
+    const doneEl = document.getElementById('todoDoneList');
+    activeEl.innerHTML = active.length ? active.map(i => `
+      <div class="item">
+        <div class="check" onclick="toggleTodo('${i.id}')"></div>
+        <div style="flex:1; min-width:0;">
+          <div class="item-text" data-id="${i.id}">${esc(i.text)}</div>
+          ${dueDisplay(i.due, i.done)}
+          ${memoPreview(i.memo)}
+        </div>
+        <button class="star-btn ${i.star ? 'active' : ''}" onclick="toggleStar('${i.id}')">${i.star ? '★' : '☆'}</button>
+        <button class="memo-btn ${i.memo ? 'active' : ''}" onclick="openMemoEditor('todo','${i.id}')">📝</button>
+        <button class="del" onclick="deleteTodo('${i.id}')">✕</button>
+      </div>`).join('') : `<div class="empty">やることを追加しましょう</div>`;
+    doneEl.innerHTML = done.map(i => `
+      <div class="item">
+        <div class="check checked" onclick="toggleTodo('${i.id}')">✓</div>
+        <div style="flex:1; min-width:0;">
+          <div class="item-text done" data-id="${i.id}">${esc(i.text)}</div>
+          ${dueDisplay(i.due, i.done)}
+          ${memoPreview(i.memo)}
+        </div>
+        <button class="memo-btn ${i.memo ? 'active' : ''}" onclick="openMemoEditor('todo','${i.id}')">📝</button>
+        <button class="del" onclick="deleteTodo('${i.id}')">✕</button>
+      </div>`).join('');
+    document.getElementById('todoDoneWrap').style.display = done.length ? 'block' : 'none';
+    if(document.getElementById('todoHistoryView').style.display !== 'none'){
+      renderTodoHistory();
+    }
+  }
+
+  function setTodoView(view){
+    document.getElementById('todoListView').style.display = view === 'list' ? 'block' : 'none';
+    document.getElementById('todoHistoryView').style.display = view === 'history' ? 'block' : 'none';
+    document.getElementById('todoSegList').classList.toggle('active', view === 'list');
+    document.getElementById('todoSegHistory').classList.toggle('active', view === 'history');
+    if(view === 'history'){
+      todoHistoryLimit = 30;
+      todoHistoryMonthFilter = null;
+      renderTodoHistory();
+    }
+  }
+
+  function weekdayLabel(dateStr){
+    const days = ['日','月','火','水','木','金','土'];
+    const d = new Date(dateStr + 'T00:00:00');
+    return days[d.getDay()];
+  }
+  // 「今週」判定（月曜始まり）。完了済みタスク/買い物を「今日のリスト」欄にいつまで残すかの基準に使う。
+  function isThisWeek(dateStr){
+    if(!dateStr) return true;
+    const d = new Date(dateStr + 'T00:00:00');
+    const now = new Date(); now.setHours(0,0,0,0);
+    const day = now.getDay();
+    const diffToMonday = (day === 0 ? 6 : day - 1);
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - diffToMonday);
+    return d >= monday;
+  }
+
+  let todoHistoryLimit = 30;
+  let todoHistoryMonthFilter = null;
+  function monthLabel(key){
+    const [y, m] = key.split('-');
+    return `${y}年${Number(m)}月`;
+  }
+  function toggleHistDetail(id){
+    const el = document.getElementById(id);
+    if(el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  }
+  function loadMoreTodoHistory(){
+    todoHistoryLimit += 30;
+    renderTodoHistory();
+  }
+  function setTodoHistoryMonth(key){
+    todoHistoryMonthFilter = key;
+    renderTodoHistory();
+  }
+  function renderTodoHistory(){
+    const items = load(STORE.todo);
+    const listEl = document.getElementById('todoHistoryList');
+    const archiveEl = document.getElementById('todoHistoryArchive');
+    if(!items.length){
+      listEl.innerHTML = `<div class="empty">まだ記録がありません</div>`;
+      archiveEl.innerHTML = '';
+      return;
+    }
+    const groups = {};
+    items.forEach(i => {
+      const key = i.date || todayStr();
+      (groups[key] = groups[key] || []).push(i);
+    });
+    const allDates = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+
+    // 年月アーカイブのピルを生成
+    const monthCounts = {};
+    allDates.forEach(d => {
+      const mk = d.slice(0,7);
+      monthCounts[mk] = (monthCounts[mk] || 0) + 1;
+    });
+    const months = Object.keys(monthCounts).sort((a,b) => b.localeCompare(a));
+    archiveEl.innerHTML = `
+      <button class="archive-pill ${!todoHistoryMonthFilter ? 'active' : ''}" onclick="setTodoHistoryMonth(null)">最新</button>
+      ${months.map(mk => `<button class="archive-pill ${todoHistoryMonthFilter === mk ? 'active' : ''}" onclick="setTodoHistoryMonth('${mk}')">${monthLabel(mk)}（${monthCounts[mk]}）</button>`).join('')}
+    `;
+
+    let dates, remaining = 0;
+    if(todoHistoryMonthFilter){
+      dates = allDates.filter(d => d.startsWith(todoHistoryMonthFilter));
+    } else {
+      dates = allDates.slice(0, todoHistoryLimit);
+      remaining = allDates.length - dates.length;
+    }
+
+    // 月を選択している場合、その月の完了タスクを日付をまたいで一括表示
+    let monthSummaryHtml = '';
+    if(todoHistoryMonthFilter){
+      const monthDone = dates.flatMap(d => groups[d].filter(i => i.done).map(i => ({...i, _date: d})));
+      if(monthDone.length){
+        monthSummaryHtml = `
+          <div class="month-summary">
+            <div class="ms-top">
+              <div class="ms-title">${monthLabel(todoHistoryMonthFilter)}に完了したタスク</div>
+              <div class="ms-count">${monthDone.length}件</div>
+            </div>
+            ${monthDone.map(i => `
+              <div class="hist-item">
+                <div class="dot done">✓</div>
+                <div class="txt done">${i.star ? '★ ' : ''}${esc(i.text)}<span style="color:var(--sub); font-size:11px;"> ・${fmtDateShort(i._date)}</span></div>
+              </div>`).join('')}
+          </div>`;
+      }
+    }
+
+    listEl.innerHTML = monthSummaryHtml + dates.map((date, idx) => {
+      const arr = groups[date];
+      const doneCount = arr.filter(i => i.done).length;
+      const rate = Math.round(doneCount / arr.length * 100);
+      const label = `${fmtDateShort(date)}（${weekdayLabel(date)}）`;
+      const detailId = `todoHistDetail_${date}`;
+      const expanded = idx < 2; // 直近2日は自動で開いておく
+      const itemsHtml = arr.map(i => `
+        <div class="hist-item">
+          <div class="dot ${i.done ? 'done' : ''}">${i.done ? '✓' : ''}</div>
+          <div class="txt ${i.done ? 'done' : ''}">${i.star ? '★ ' : ''}${esc(i.text)}${i.memo ? ' 📝' : ''}${i.due ? `<span style="color:var(--sub); font-size:11.5px;"> ・締切 ${fmtDateShort(i.due)}</span>` : ''}</div>
+        </div>`).join('');
+      return `
+        <div class="hist-day">
+          <div class="hd-top" onclick="toggleHistDetail('${detailId}')">
+            <div class="hd-date">${label}<span class="hd-caret">${expanded ? '▾' : '▸'}</span></div>
+            <div class="hd-rate">${doneCount}/${arr.length}完了（${rate}%）</div>
+          </div>
+          <div class="hist-bar"><div class="hist-bar-fill" style="width:${rate}%"></div></div>
+          <div id="${detailId}" style="display:${expanded ? 'block' : 'none'}">${itemsHtml}</div>
+        </div>`;
+    }).join('') + (remaining > 0 ? `<button class="hist-load-more" onclick="loadMoreTodoHistory()">もっと過去を見る（残り${remaining}日）</button>` : '');
+  }
+
+  /* ---------- Shopping ---------- */
+  function addShop(){
+    const input = document.getElementById('shopInput');
+    const mEl = document.getElementById('shopDueM');
+    const dEl = document.getElementById('shopDueD');
+    const text = input.value.trim();
+    if(!text) return;
+    const due = buildDueDate(mEl, dEl);
+    const items = load(STORE.shop);
+    items.unshift({ id: uid(), text, done:false, date: todayStr(), due });
+    save(STORE.shop, items);
+    input.value = '';
+    mEl.value = '';
+    dEl.value = '';
+    renderShop();
+  }
+  function toggleShop(id){
+    const items = load(STORE.shop);
+    const it = items.find(i => i.id === id);
+    if(it){ it.done = !it.done; save(STORE.shop, items); renderShop(); }
+  }
+  function deleteShop(id){
+    save(STORE.shop, load(STORE.shop).filter(i => i.id !== id));
+    renderShop();
+  }
+  function clearDoneShop(){
+    save(STORE.shop, load(STORE.shop).filter(i => !(i.done && isThisWeek(i.date))));
+    renderShop();
+  }
+  function setShopView(view){
+    document.getElementById('shopListView').style.display = view === 'list' ? 'block' : 'none';
+    document.getElementById('shopHistoryView').style.display = view === 'history' ? 'block' : 'none';
+    document.getElementById('shopSegList').classList.toggle('active', view === 'list');
+    document.getElementById('shopSegHistory').classList.toggle('active', view === 'history');
+    if(view === 'history'){
+      shopHistoryLimit = 30;
+      shopHistoryMonthFilter = null;
+      renderShopHistory();
+    }
+  }
+  function renderShop(){
+    const items = load(STORE.shop);
+    const active = items.filter(i => !i.done);
+    const done = items.filter(i => i.done && isThisWeek(i.date));
+    const activeEl = document.getElementById('shopActiveList');
+    const doneEl = document.getElementById('shopDoneList');
+    activeEl.innerHTML = active.length ? active.map(i => `
+      <div class="item">
+        <div class="check" onclick="toggleShop('${i.id}')"></div>
+        <div style="flex:1; min-width:0;">
+          <div class="item-text">${esc(i.text)}</div>
+          ${dueDisplay(i.due, i.done)}
+        </div>
+        <button class="del" onclick="deleteShop('${i.id}')">✕</button>
+      </div>`).join('') : `<div class="empty">買うものを追加しましょう</div>`;
+    doneEl.innerHTML = done.map(i => `
+      <div class="item">
+        <div class="check checked" onclick="toggleShop('${i.id}')">✓</div>
+        <div style="flex:1; min-width:0;">
+          <div class="item-text done">${esc(i.text)}</div>
+          ${dueDisplay(i.due, i.done)}
+        </div>
+        <button class="del" onclick="deleteShop('${i.id}')">✕</button>
+      </div>`).join('');
+    document.getElementById('shopDoneWrap').style.display = done.length ? 'block' : 'none';
+    if(document.getElementById('shopHistoryView').style.display !== 'none'){
+      renderShopHistory();
+    }
+  }
+  let shopHistoryLimit = 30;
+  let shopHistoryMonthFilter = null;
+  function loadMoreShopHistory(){
+    shopHistoryLimit += 30;
+    renderShopHistory();
+  }
+  function setShopHistoryMonth(key){
+    shopHistoryMonthFilter = key;
+    renderShopHistory();
+  }
+  function renderShopHistory(){
+    const items = load(STORE.shop);
+    const listEl = document.getElementById('shopHistoryList');
+    const archiveEl = document.getElementById('shopHistoryArchive');
+    if(!items.length){
+      listEl.innerHTML = `<div class="empty">まだ記録がありません</div>`;
+      archiveEl.innerHTML = '';
+      return;
+    }
+    const groups = {};
+    items.forEach(i => {
+      const key = i.date || todayStr();
+      (groups[key] = groups[key] || []).push(i);
+    });
+    const allDates = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+
+    const monthCounts = {};
+    allDates.forEach(d => {
+      const mk = d.slice(0,7);
+      monthCounts[mk] = (monthCounts[mk] || 0) + 1;
+    });
+    const months = Object.keys(monthCounts).sort((a,b) => b.localeCompare(a));
+    archiveEl.innerHTML = `
+      <button class="archive-pill ${!shopHistoryMonthFilter ? 'active' : ''}" onclick="setShopHistoryMonth(null)">最新</button>
+      ${months.map(mk => `<button class="archive-pill ${shopHistoryMonthFilter === mk ? 'active' : ''}" onclick="setShopHistoryMonth('${mk}')">${monthLabel(mk)}（${monthCounts[mk]}）</button>`).join('')}
+    `;
+
+    let dates, remaining = 0;
+    if(shopHistoryMonthFilter){
+      dates = allDates.filter(d => d.startsWith(shopHistoryMonthFilter));
+    } else {
+      dates = allDates.slice(0, shopHistoryLimit);
+      remaining = allDates.length - dates.length;
+    }
+
+    // 月を選択している場合、その月に購入済みのものを日付をまたいで一括表示
+    let monthSummaryHtml = '';
+    if(shopHistoryMonthFilter){
+      const monthDone = dates.flatMap(d => groups[d].filter(i => i.done).map(i => ({...i, _date: d})));
+      if(monthDone.length){
+        monthSummaryHtml = `
+          <div class="month-summary">
+            <div class="ms-top">
+              <div class="ms-title">${monthLabel(shopHistoryMonthFilter)}に購入したもの</div>
+              <div class="ms-count">${monthDone.length}件</div>
+            </div>
+            ${monthDone.map(i => `
+              <div class="hist-item">
+                <div class="dot done">✓</div>
+                <div class="txt done">${esc(i.text)}<span style="color:var(--sub); font-size:11px;"> ・${fmtDateShort(i._date)}</span></div>
+              </div>`).join('')}
+          </div>`;
+      }
+    }
+
+    listEl.innerHTML = monthSummaryHtml + dates.map((date, idx) => {
+      const arr = groups[date];
+      const doneCount = arr.filter(i => i.done).length;
+      const rate = Math.round(doneCount / arr.length * 100);
+      const label = `${fmtDateShort(date)}（${weekdayLabel(date)}）`;
+      const detailId = `shopHistDetail_${date}`;
+      const expanded = idx < 2;
+      const itemsHtml = arr.map(i => `
+        <div class="hist-item">
+          <div class="dot ${i.done ? 'done' : ''}">${i.done ? '✓' : ''}</div>
+          <div class="txt ${i.done ? 'done' : ''}">${esc(i.text)}${i.due ? `<span style="color:var(--sub); font-size:11.5px;"> ・期限 ${fmtDateShort(i.due)}</span>` : ''}</div>
+        </div>`).join('');
+      return `
+        <div class="hist-day">
+          <div class="hd-top" onclick="toggleHistDetail('${detailId}')">
+            <div class="hd-date">${label}<span class="hd-caret">${expanded ? '▾' : '▸'}</span></div>
+            <div class="hd-rate">${doneCount}/${arr.length}購入済み（${rate}%）</div>
+          </div>
+          <div class="hist-bar"><div class="hist-bar-fill" style="width:${rate}%; background:var(--shop);"></div></div>
+          <div id="${detailId}" style="display:${expanded ? 'block' : 'none'}">${itemsHtml}</div>
+        </div>`;
+    }).join('') + (remaining > 0 ? `<button class="hist-load-more" style="color:var(--shop);" onclick="loadMoreShopHistory()">もっと過去を見る（残り${remaining}日）</button>` : '');
+  }
+
+  /* ---------- Gym ---------- */
+  const METS = [
+    { key:'walk',        label:'ウォーキング',        met:3.5 },
+    { key:'jog_easy',     label:'ランニング（ゆっくり）', met:7.0 },
+    { key:'jog_normal',   label:'ランニング（普通）',    met:9.8 },
+    { key:'jog_fast',     label:'ランニング（速め）',    met:11.5 },
+    { key:'cycling',      label:'サイクリング',        met:7.5 },
+    { key:'strength_light',label:'筋トレ（軽め）',      met:3.5 },
+    { key:'strength_hard', label:'筋トレ（高強度）',     met:6.0 },
+    { key:'hiit',          label:'HIIT／サーキット',     met:8.0 },
+    { key:'other',          label:'その他（中強度）',    met:5.0 }
+  ];
+  function metOf(key){
+    const m = METS.find(x => x.key === key);
+    return m ? m.met : 5.0;
+  }
+  function metLabelOf(key){
+    const m = METS.find(x => x.key === key);
+    return m ? m.label : 'その他';
+  }
+  function currentBodyWeight(){
+    const logs = load(STORE.weight);
+    if(!logs.length) return null;
+    const sorted = [...logs].sort((a,b) => a.date.localeCompare(b.date));
+    return sorted[sorted.length - 1].weight;
+  }
+  const DEFAULT_BODY_WEIGHT = 65;
+  function bodyWeightForDate(dateStr){
+    const logs = load(STORE.weight);
+    if(!logs.length) return { weight: DEFAULT_BODY_WEIGHT, isDefault: true };
+    const exact = logs.find(l => l.date === dateStr);
+    if(exact) return { weight: exact.weight, isDefault: false };
+    const before = logs.filter(l => l.date < dateStr).sort((a,b) => b.date.localeCompare(a.date));
+    if(before.length) return { weight: before[0].weight, isDefault: false };
+    return { weight: DEFAULT_BODY_WEIGHT, isDefault: true };
+  }
+  function calcKcal(met, weightKg, durationMin){
+    if(!weightKg || !durationMin) return null;
+    return Math.round(met * 3.5 * weightKg / 200 * durationMin);
+  }
+  function intensityLevel(kcal){
+    if(kcal < 100) return { label:'軽め', score:1, color:'#8a867a' };
+    if(kcal < 250) return { label:'標準', score:2, color:'#3a4f8a' };
+    if(kcal < 450) return { label:'しっかり', score:3, color:'#b2622e' };
+    return { label:'ハード', score:4, color:'#b3453f' };
+  }
+
+  function addGym(){
+    const exInput = document.getElementById('gymEx').value.trim();
+    const type = document.getElementById('gymType').value;
+    const weight = document.getElementById('gymWeight').value;
+    const reps = document.getElementById('gymReps').value;
+    const sets = document.getElementById('gymSets').value;
+    const duration = document.getElementById('gymDuration').value;
+    const distance = document.getElementById('gymDistance').value;
+    const ex = exInput || metLabelOf(type);
+    const entryDate = todayStr();
+    const bodyWeightInfo = bodyWeightForDate(entryDate);
+    const durationMin = duration ? Number(duration) : null;
+    const distanceKm = distance ? Number(distance) : null;
+    const met = metOf(type);
+    const kcal = calcKcal(met, bodyWeightInfo.weight, durationMin);
+    const logs = load(STORE.gym);
+    logs.unshift({
+      id: uid(),
+      ex,
+      type,
+      weight: weight ? Number(weight) : null,
+      reps: reps ? Number(reps) : null,
+      sets: sets ? Number(sets) : null,
+      durationMin,
+      distanceKm,
+      kcal,
+      ts: Date.now(),
+      date: entryDate
+    });
+    save(STORE.gym, logs);
+    document.getElementById('gymEx').value = '';
+    document.getElementById('gymWeight').value = '';
+    document.getElementById('gymReps').value = '';
+    document.getElementById('gymSets').value = '';
+    document.getElementById('gymDuration').value = '';
+    document.getElementById('gymDistance').value = '';
+    renderGym();
+  }
+  function deleteGym(id){
+    save(STORE.gym, load(STORE.gym).filter(i => i.id !== id));
+    renderGym();
+  }
+  function fmtDate(ts){
+    const d = new Date(ts);
+    const days = ['日','月','火','水','木','金','土'];
+    return `${d.getMonth()+1}/${d.getDate()}(${days[d.getDay()]})`;
+  }
+  function setGymView(view){
+    document.getElementById('gymListView').style.display = view === 'list' ? 'block' : 'none';
+    document.getElementById('gymScoreView').style.display = view === 'score' ? 'block' : 'none';
+    document.getElementById('gymSegList').classList.toggle('active', view === 'list');
+    document.getElementById('gymSegScore').classList.toggle('active', view === 'score');
+    if(view === 'score') renderGymScore();
+  }
+  function paceLabel(distanceKm, durationMin){
+    if(!distanceKm || !durationMin) return null;
+    const paceMinPerKm = durationMin / distanceKm;
+    const m = Math.floor(paceMinPerKm);
+    const s = Math.round((paceMinPerKm - m) * 60);
+    return `${m}'${String(s).padStart(2,'0')}"/km`;
+  }
+
+  function renderGym(){
+    const logs = load(STORE.gym);
+    const listEl = document.getElementById('gymList');
+    if(!logs.length){
+      listEl.innerHTML = `<div class="empty">トレーニング記録を追加しましょう</div>`;
+      return;
+    }
+    let html = '';
+    let lastDay = null;
+    logs.forEach(l => {
+      const day = fmtDate(l.ts);
+      if(day !== lastDay){
+        html += `<div class="gym-day-label">${day}</div>`;
+        lastDay = day;
+      }
+      const metaParts = [];
+      if(l.weight !== null) metaParts.push(`${l.weight}kg`);
+      if(l.reps !== null) metaParts.push(`${l.reps}回`);
+      if(l.sets !== null) metaParts.push(`${l.sets}セット`);
+      if(l.distanceKm !== null && l.distanceKm !== undefined) metaParts.push(`${l.distanceKm}km`);
+      if(l.durationMin !== null) metaParts.push(`${l.durationMin}分`);
+      const pace = paceLabel(l.distanceKm, l.durationMin);
+      if(pace) metaParts.push(`ペース${pace}`);
+      let kcalHtml = '';
+      if(l.kcal !== null && l.kcal !== undefined){
+        const lv = intensityLevel(l.kcal);
+        kcalHtml = `<div class="kcal">🔥 約${l.kcal}kcal<span class="badge" style="background:${lv.color}">${lv.label}</span></div>`;
+      }
+      html += `
+        <div class="gym-card">
+          <div class="top">
+            <div>
+              <div class="ex">${esc(l.ex)}${l.type && l.ex !== metLabelOf(l.type) ? `<span style="font-weight:400; color:var(--sub); font-size:12px;"> ・${metLabelOf(l.type)}</span>` : ''}</div>
+              <div class="meta">${metaParts.join(' × ') || '記録のみ'}</div>
+              ${kcalHtml}
+            </div>
+            <button class="del" onclick="deleteGym('${l.id}')">✕</button>
+          </div>
+        </div>`;
+    });
+    listEl.innerHTML = html;
+  }
+
+  function renderGymScore(){
+    const logs = load(STORE.gym).filter(l => l.kcal !== null && l.kcal !== undefined);
+    const summaryEl = document.getElementById('gymScoreSummary');
+    const chartEl = document.getElementById('gymBarChart');
+    const listEl = document.getElementById('gymScoreList');
+
+    if(!logs.length){
+      summaryEl.innerHTML = `<div class="empty">時間を入力して記録すると、ここにカロリーと強度スコアが表示されます</div>`;
+      chartEl.innerHTML = '';
+      listEl.innerHTML = '';
+      return;
+    }
+
+    // 日付ごとに集計
+    const groups = {};
+    logs.forEach(l => {
+      const key = l.date || todayStr();
+      (groups[key] = groups[key] || []).push(l);
+    });
+    const dates = Object.keys(groups).sort();
+    const totals = dates.map(d => groups[d].reduce((s,l) => s + l.kcal, 0));
+
+    const todayKey = todayStr();
+    const todayTotal = groups[todayKey] ? groups[todayKey].reduce((s,l) => s + l.kcal, 0) : 0;
+    const todayLv = intensityLevel(todayTotal);
+    const bwInfo = bodyWeightForDate(todayKey);
+
+    summaryEl.innerHTML = `
+      <div class="ss-row">
+        <div class="ss-label">今日の消費カロリー</div>
+        <div class="ss-val">${todayTotal}kcal <span class="badge" style="background:${todayLv.color}">${todayLv.label}</span></div>
+      </div>
+      <div class="ss-row">
+        <div class="ss-label">使用体重</div>
+        <div class="ss-val" style="font-size:13px; color:var(--sub); font-weight:600;">${bwInfo.weight}kg${bwInfo.isDefault ? '（未記録のため仮の値）' : '（今日の記録、なければ直近の記録）'}</div>
+      </div>`;
+
+    // 直近14日分の棒グラフ
+    const recentDates = dates.slice(-14);
+    const recentTotals = recentDates.map(d => groups[d].reduce((s,l) => s + l.kcal, 0));
+    const maxVal = Math.max(...recentTotals, 1);
+    chartEl.innerHTML = `
+      <div class="bars">
+        ${recentDates.map((d,i) => {
+          const h = Math.max(4, Math.round(recentTotals[i] / maxVal * 100));
+          return `
+            <div class="bar-col">
+              <div class="bar" style="height:${h}%"></div>
+              <div class="bar-label">${fmtDateShort(d)}</div>
+            </div>`;
+        }).join('')}
+      </div>`;
+
+    // 日付ごとの履歴（新しい順）
+    listEl.innerHTML = [...dates].reverse().map(d => {
+      const arr = groups[d];
+      const total = arr.reduce((s,l) => s + l.kcal, 0);
+      const lv = intensityLevel(total);
+      const label = `${fmtDateShort(d)}（${weekdayLabel(d)}）`;
+      const itemsHtml = arr.map(l => `
+        <div class="hist-item">
+          <div class="txt">${esc(l.ex)}<span style="color:var(--sub); font-size:11.5px;">${l.ex !== metLabelOf(l.type) ? ` ・${metLabelOf(l.type)}` : ''}${l.distanceKm ? ` ・${l.distanceKm}km` : ''} ・${l.durationMin}分 ・約${l.kcal}kcal</span></div>
+        </div>`).join('');
+      return `
+        <div class="hist-day">
+          <div class="hd-top">
+            <div class="hd-date">${label}</div>
+            <div class="hd-rate">合計${total}kcal <span class="badge" style="background:${lv.color}">${lv.label}</span></div>
+          </div>
+          ${itemsHtml}
+        </div>`;
+    }).join('');
+  }
+
+  /* ---------- Weight ---------- */
+  function todayStr(){
+    const d = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+  function addWeight(){
+    const dateEl = document.getElementById('weightDate');
+    const valEl = document.getElementById('weightVal');
+    const date = dateEl.value || todayStr();
+    const val = parseFloat(valEl.value);
+    if(!val || val <= 0) return;
+    let logs = load(STORE.weight);
+    // 同じ日付があれば上書き
+    const existing = logs.find(l => l.date === date);
+    if(existing){
+      existing.weight = val;
+    } else {
+      logs.push({ id: uid(), date, weight: val });
+    }
+    logs.sort((a,b) => a.date.localeCompare(b.date));
+    save(STORE.weight, logs);
+    valEl.value = '';
+    renderWeight();
+  }
+  function deleteWeight(id){
+    save(STORE.weight, load(STORE.weight).filter(i => i.id !== id));
+    renderWeight();
+  }
+  function fmtDateShort(dateStr){
+    const [y,m,d] = dateStr.split('-');
+    return `${Number(m)}/${Number(d)}`;
+  }
+  function renderWeight(){
+    const logs = load(STORE.weight);
+    const listEl = document.getElementById('weightList');
+    const chartEl = document.getElementById('weightChart');
+
+    if(!logs.length){
+      listEl.innerHTML = `<div class="empty">体重を記録しましょう</div>`;
+      chartEl.innerHTML = `<div class="chart-empty">記録が2件以上になるとグラフが表示されます</div>`;
+      return;
+    }
+
+    // list: 新しい日付が上
+    const sorted = [...logs].sort((a,b) => b.date.localeCompare(a.date));
+    listEl.innerHTML = sorted.map(l => `
+      <div class="weight-card">
+        <div>
+          <div class="wdate">${fmtDateShort(l.date)}</div>
+          <div class="wval">${l.weight}kg</div>
+        </div>
+        <button class="del" onclick="deleteWeight('${l.id}')">✕</button>
+      </div>`).join('');
+
+    // chart: 直近30件、日付昇順
+    const recent = logs.slice(-30);
+    if(recent.length < 2){
+      chartEl.innerHTML = `<div class="chart-empty">記録が2件以上になるとグラフが表示されます</div>`;
+      return;
+    }
+    const w = chartEl.clientWidth || 300;
+    const h = 140;
+    const padX = 8, padY = 16;
+    const values = recent.map(l => l.weight);
+    let min = Math.min(...values), max = Math.max(...values);
+    if(min === max){ min -= 1; max += 1; }
+    const range = max - min;
+    const stepX = (w - padX*2) / (recent.length - 1);
+    const points = recent.map((l,i) => {
+      const x = padX + i*stepX;
+      const y = padY + (h - padY*2) * (1 - (l.weight - min)/range);
+      return [x,y];
+    });
+    const pathD = points.map((p,i) => (i===0?'M':'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const dots = points.map((p,i) => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="var(--weight)"></circle>`).join('');
+    const firstLabel = fmtDateShort(recent[0].date);
+    const lastLabel = fmtDateShort(recent[recent.length-1].date);
+
+    chartEl.innerHTML = `
+      <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+        <path d="${pathD}" fill="none" stroke="var(--weight)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        ${dots}
+      </svg>
+      <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--sub); padding:0 2px 4px;">
+        <span>${firstLabel}（${values[0]}kg）</span>
+        <span>${lastLabel}（${values[values.length-1]}kg）</span>
+      </div>`;
+  }
+
+  /* ---------- Memo (長押し / アイコンで開く) ---------- */
+  let memoEditing = null; // { store: 'todo'|'shop', id }
+
+  function openMemoEditor(storeKey, id){
+    const storeName = STORE[storeKey];
+    const items = load(storeName);
+    const it = items.find(i => i.id === id);
+    if(!it) return;
+    memoEditing = { store: storeKey, id };
+    document.getElementById('memoTaskLabel').textContent = it.text;
+    document.getElementById('memoTextarea').value = it.memo || '';
+    document.getElementById('memoOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('memoTextarea').focus(), 150);
+  }
+  function closeMemoEditor(){
+    document.getElementById('memoOverlay').classList.remove('open');
+    memoEditing = null;
+  }
+  function saveMemo(){
+    if(!memoEditing) return;
+    const storeName = STORE[memoEditing.store];
+    const items = load(storeName);
+    const it = items.find(i => i.id === memoEditing.id);
+    if(it){
+      it.memo = document.getElementById('memoTextarea').value.trim();
+      save(storeName, items);
+      if(memoEditing.store === 'todo') renderTodo(); else renderShop();
+    }
+    closeMemoEditor();
+  }
+  function deleteMemo(){
+    if(!memoEditing) return;
+    const storeName = STORE[memoEditing.store];
+    const items = load(storeName);
+    const it = items.find(i => i.id === memoEditing.id);
+    if(it){
+      it.memo = '';
+      save(storeName, items);
+      if(memoEditing.store === 'todo') renderTodo(); else renderShop();
+    }
+    closeMemoEditor();
+  }
+
+  // 長押し検出（.item-text[data-id] を長押しするとメモを開く。指の移動やスクロールは自動でキャンセル）
+  let pressState = null;
+  function cancelPress(){
+    if(pressState){
+      clearTimeout(pressState.timer);
+      if(pressState.el) pressState.el.classList.remove('pressing');
+    }
+    pressState = null;
+  }
+  function initLongPress(){
+    document.addEventListener('pointerdown', e => {
+      const textEl = e.target.closest('.item-text[data-id]');
+      if(!textEl) return;
+      const itemEl = textEl.closest('.item');
+      const id = textEl.getAttribute('data-id');
+      const pageEl = textEl.closest('.page');
+      const storeKey = pageEl && pageEl.id === 'shopPage' ? 'shop' : 'todo';
+      if(itemEl) itemEl.classList.add('pressing');
+      pressState = { x: e.clientX, y: e.clientY, el: itemEl, timer: null };
+      pressState.timer = setTimeout(() => {
+        if(!pressState) return;
+        if(itemEl) itemEl.classList.remove('pressing');
+        if(navigator.vibrate) navigator.vibrate(8);
+        pressState = null;
+        openMemoEditor(storeKey, id);
+      }, 480);
+    });
+    document.addEventListener('pointermove', e => {
+      if(!pressState) return;
+      if(Math.abs(e.clientX - pressState.x) > 10 || Math.abs(e.clientY - pressState.y) > 10) cancelPress();
+    });
+    document.addEventListener('pointerup', cancelPress);
+    document.addEventListener('pointercancel', cancelPress);
+  }
+
+  /* ---------- Money (家計簿) ---------- */
+  const MONEY_CATS = {
+    expense: ['食費','日用品','交通','娯楽','固定費','医療','その他'],
+    income: ['給与','副収入','その他']
+  };
+  let moneyType = 'expense';
+
+  function setMoneyType(type){
+    moneyType = type;
+    document.getElementById('moneyTypeExpense').classList.toggle('active', type === 'expense');
+    document.getElementById('moneyTypeIncome').classList.toggle('active', type === 'income');
+    populateMoneyCategories();
+  }
+  function populateMoneyCategories(){
+    const sel = document.getElementById('moneyCategory');
+    sel.innerHTML = MONEY_CATS[moneyType].map(c => `<option value="${c}">${c}</option>`).join('');
+  }
+  // 家計簿は「過去の記録」が基本なので、締切用のbuildDueDateとは逆に
+  // 今日より先の日付を入力した場合は自動で「去年」扱いにする
+  function buildPastDate(mEl, dEl){
+    const m = parseInt(mEl.value, 10);
+    const d = parseInt(dEl.value, 10);
+    if(!m || !d || m < 1 || m > 12 || d < 1 || d > 31) return todayStr();
+    const today = new Date(); today.setHours(0,0,0,0);
+    let year = today.getFullYear();
+    let candidate = new Date(year, m - 1, d);
+    candidate.setHours(0,0,0,0);
+    if(candidate > today){ year -= 1; }
+    const pad = n => String(n).padStart(2,'0');
+    return `${year}-${pad(m)}-${pad(d)}`;
+  }
+  function addMoney(){
+    const amountEl = document.getElementById('moneyAmount');
+    const amount = parseInt(amountEl.value, 10);
+    if(!amount || amount <= 0) return;
+    const category = document.getElementById('moneyCategory').value;
+    const memo = document.getElementById('moneyMemo').value.trim();
+    const mEl = document.getElementById('moneyDateM');
+    const dEl = document.getElementById('moneyDateD');
+    const date = buildPastDate(mEl, dEl);
+    const records = load(STORE.money);
+    records.unshift({ id: uid(), type: moneyType, amount, category, memo, date, ts: Date.now() });
+    save(STORE.money, records);
+    amountEl.value = '';
+    document.getElementById('moneyMemo').value = '';
+    mEl.value = '';
+    dEl.value = '';
+    renderMoneyList();
+  }
+  function deleteMoney(id){
+    save(STORE.money, load(STORE.money).filter(r => r.id !== id));
+    renderMoneyList();
+  }
+  function setMoneyView(view){
+    document.getElementById('moneyListView').style.display = view === 'list' ? 'block' : 'none';
+    document.getElementById('moneySummaryView').style.display = view === 'summary' ? 'block' : 'none';
+    document.getElementById('moneySegList').classList.toggle('active', view === 'list');
+    document.getElementById('moneySegSummary').classList.toggle('active', view === 'summary');
+    if(view === 'summary'){
+      moneySummaryMonth = null;
+      renderMoneySummary();
+    }
+  }
+  function renderMoneyList(){
+    const records = load(STORE.money).sort((a,b) => b.date.localeCompare(a.date) || b.ts - a.ts);
+    const listEl = document.getElementById('moneyList');
+    if(!records.length){
+      listEl.innerHTML = `<div class="empty">支出・収入を記録しましょう</div>`;
+      return;
+    }
+    let html = '';
+    let lastDate = null;
+    records.forEach(r => {
+      if(r.date !== lastDate){
+        html += `<div class="money-day-label">${fmtDateShort(r.date)}（${weekdayLabel(r.date)}）</div>`;
+        lastDate = r.date;
+      }
+      const isExpense = r.type === 'expense';
+      html += `
+        <div class="gym-card">
+          <div class="top">
+            <div>
+              <div class="ex">${esc(r.category)}${r.memo ? `<span style="font-weight:400; color:var(--sub); font-size:12px;"> ・${esc(r.memo)}</span>` : ''}</div>
+              <div class="meta">${isExpense ? '支出' : '収入'}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-weight:800; font-size:16px; color:${isExpense ? 'var(--danger)' : 'var(--todo)'};">${isExpense ? '-' : '+'}¥${r.amount.toLocaleString()}</div>
+              <button class="del" onclick="deleteMoney('${r.id}')">✕</button>
+            </div>
+          </div>
+        </div>`;
+    });
+    listEl.innerHTML = html;
+  }
+
+  let moneySummaryMonth = null;
+  function setMoneySummaryMonth(key){
+    moneySummaryMonth = key;
+    renderMoneySummary();
+  }
+  function renderMoneySummary(){
+    const records = load(STORE.money);
+    const archiveEl = document.getElementById('moneyArchive');
+    const cardEl = document.getElementById('moneySummaryCard');
+    const catEl = document.getElementById('moneyCategoryBars');
+    const barEl = document.getElementById('moneyBarChart');
+
+    if(!records.length){
+      archiveEl.innerHTML = '';
+      cardEl.innerHTML = `<div class="empty">まだ記録がありません</div>`;
+      catEl.innerHTML = '';
+      barEl.innerHTML = '';
+      return;
+    }
+
+    // 年月アーカイブピル
+    const monthCounts = {};
+    records.forEach(r => {
+      const mk = r.date.slice(0,7);
+      monthCounts[mk] = (monthCounts[mk] || 0) + 1;
+    });
+    const months = Object.keys(monthCounts).sort((a,b) => b.localeCompare(a));
+    const currentMonth = moneySummaryMonth || todayStr().slice(0,7);
+    archiveEl.innerHTML = months.map(mk => `<button class="archive-pill ${mk === currentMonth ? 'active' : ''}" onclick="setMoneySummaryMonth('${mk}')">${monthLabel(mk)}（${monthCounts[mk]}）</button>`).join('');
+
+    // 対象月の集計
+    const monthRecords = records.filter(r => r.date.startsWith(currentMonth));
+    const expenseTotal = monthRecords.filter(r => r.type === 'expense').reduce((s,r) => s + r.amount, 0);
+    const incomeTotal = monthRecords.filter(r => r.type === 'income').reduce((s,r) => s + r.amount, 0);
+    const net = incomeTotal - expenseTotal;
+    cardEl.innerHTML = `
+      <div class="ss-row">
+        <div class="ss-label">${monthLabel(currentMonth)}の支出</div>
+        <div class="ss-val" style="color:var(--danger);">-¥${expenseTotal.toLocaleString()}</div>
+      </div>
+      <div class="ss-row">
+        <div class="ss-label">${monthLabel(currentMonth)}の収入</div>
+        <div class="ss-val" style="color:var(--todo);">+¥${incomeTotal.toLocaleString()}</div>
+      </div>
+      <div class="ss-row">
+        <div class="ss-label">収支</div>
+        <div class="ss-val" style="color:${net >= 0 ? 'var(--todo)' : 'var(--danger)'};">${net >= 0 ? '+' : '-'}¥${Math.abs(net).toLocaleString()}</div>
+      </div>`;
+
+    // カテゴリ別内訳（支出）
+    const catTotals = {};
+    monthRecords.filter(r => r.type === 'expense').forEach(r => {
+      catTotals[r.category] = (catTotals[r.category] || 0) + r.amount;
+    });
+    const cats = Object.keys(catTotals).sort((a,b) => catTotals[b] - catTotals[a]);
+    if(!cats.length){
+      catEl.innerHTML = `<div class="empty" style="padding:16px 0;">この月の支出はまだありません</div>`;
+    } else {
+      const maxCat = Math.max(...cats.map(c => catTotals[c]));
+      catEl.innerHTML = cats.map(c => `
+        <div class="cat-row">
+          <div class="cat-top">
+            <span class="cat-name">${esc(c)}</span>
+            <span class="cat-amt">¥${catTotals[c].toLocaleString()}（${Math.round(catTotals[c]/expenseTotal*100)}%）</span>
+          </div>
+          <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${Math.round(catTotals[c]/maxCat*100)}%"></div></div>
+        </div>`).join('');
+    }
+
+    // 月別支出推移（直近6ヶ月、記録がある月のうち新しい6件）
+    const allMonths = [...new Set(records.map(r => r.date.slice(0,7)))].sort();
+    const recentMonths = allMonths.slice(-6);
+    const monthExpenseTotals = recentMonths.map(mk => records.filter(r => r.date.startsWith(mk) && r.type === 'expense').reduce((s,r) => s + r.amount, 0));
+    const maxMonthVal = Math.max(...monthExpenseTotals, 1);
+    barEl.innerHTML = `
+      <div class="bars">
+        ${recentMonths.map((mk,i) => {
+          const h = Math.max(4, Math.round(monthExpenseTotals[i] / maxMonthVal * 100));
+          return `
+            <div class="bar-col">
+              <div class="bar" style="height:${h}%"></div>
+              <div class="bar-label">${Number(mk.slice(5,7))}月</div>
+            </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  /* ---------- Backup / Restore ---------- */
+  function toggleSettings(){
+    const overlay = document.getElementById('settingsOverlay');
+    overlay.classList.toggle('open');
+    document.getElementById('settingsStatus').textContent = '';
+  }
+  function exportData(){
+    const data = {
+      app: 'life-tracker',
+      exportedAt: new Date().toISOString(),
+      todo: load(STORE.todo),
+      shop: load(STORE.shop),
+      gym: load(STORE.gym),
+      weight: load(STORE.weight),
+      money: load(STORE.money)
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const pad = n => String(n).padStart(2,'0');
+    const d = new Date();
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `life-tracker-backup-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    const statusEl = document.getElementById('settingsStatus');
+    statusEl.style.color = 'var(--todo)';
+    statusEl.textContent = '書き出しました。保存先を選んでファイルアプリ／iCloud Driveなどに保存してください。';
+  }
+  function importData(event){
+    const file = event.target.files[0];
+    const statusEl = document.getElementById('settingsStatus');
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if(data.app !== 'life-tracker') throw new Error('invalid');
+        if(!confirm('現在のデータを上書きして復元します。よろしいですか？')){
+          event.target.value = '';
+          return;
+        }
+        if(data.todo) save(STORE.todo, data.todo);
+        if(data.shop) save(STORE.shop, data.shop);
+        if(data.gym) save(STORE.gym, data.gym);
+        if(data.weight) save(STORE.weight, data.weight);
+        if(data.money) save(STORE.money, data.money);
+        statusEl.style.color = 'var(--todo)';
+        statusEl.textContent = '復元しました。画面を再読み込みします…';
+        setTimeout(() => location.reload(), 800);
+      } catch(e){
+        statusEl.style.color = 'var(--danger)';
+        statusEl.textContent = '読み込みに失敗しました。正しいバックアップファイルか確認してください。';
+      }
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+
+  /* ---------- init ---------- */
+  document.getElementById('todoInput').addEventListener('keydown', e => { if(e.key==='Enter') addTodo(); });
+  document.getElementById('shopInput').addEventListener('keydown', e => { if(e.key==='Enter') addShop(); });
+  document.getElementById('weightDate').value = todayStr();
+  document.getElementById('gymType').innerHTML = METS.map(m => `<option value="${m.key}">${m.label}</option>`).join('');
+  populateMoneyCategories();
+  initLongPress();
+
+  switchPage('todo');
+  renderTodo();
+  renderShop();
+  renderGym();
+  renderWeight();
+  renderMoneyList();
+</script>
+
+</body>
+</html>
